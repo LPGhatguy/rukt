@@ -1,60 +1,101 @@
 local Rukt = require("rukt")
 local Box = Rukt.Box
-local FlexLayout = Rukt.FlexLayout
 
-local boxes = {}
+local function set(source, key, value)
+	local new = {}
 
-for i = 1, 15 do
-	table.insert(boxes, Box:new(50, 50))
+	for key, value in pairs(source) do
+		new[key] = value
+	end
+
+	new[key] = value
+
+	return new
 end
 
-local t = 0
-
-local layout = Box:new(300, 300):layout(FlexLayout):add(
-	unpack(boxes)
-)
-
-local colors = {
-	[layout] = {92, 192, 92}
-}
-
-local function renderBox(box)
-	if colors[box] then
-		love.graphics.setColor(colors[box])
-	else
-		love.graphics.setColor(192, 92, 92)
+local function Children(...)
+	local children = {...}
+	return function(abstract, concrete)
+		for _, child in ipairs(children) do
+			table.insert(abstract.children, child)
+		end
 	end
-	love.graphics.rectangle("fill", 0, 0, box.width, box.height)
+end
 
-	love.graphics.setColor(92, 92, 92)
-	love.graphics.setLineWidth(2)
-	love.graphics.rectangle("line", 0, 0, box.width, box.height)
+local function VerticalLayout(abstract, concrete)
+	local y = concrete.y
 
-	for _, child in ipairs(box.children) do
-		local x, y = child:getRelativePosition()
-		love.graphics.push()
-		love.graphics.translate(x, y)
+	for _, childNode in ipairs(abstract.children) do
+		local concreteChild = childNode:createConcreteNode()
+		concreteChild.y = y
 
-		renderBox(child)
+		childNode:congeal(concreteChild)
 
-		love.graphics.pop()
+		y = y + concreteChild.height
+
+		table.insert(concrete.children, concreteChild)
+	end
+end
+
+local function sizeConstraint(w, h)
+	return function(abstract, concrete)
+		concrete.width = w
+		concrete.height = h
+	end
+end
+
+local function fitContents(abstract, concrete)
+	local totalW, totalH = 0, 0
+
+	for _, child in ipairs(concrete.children) do
+		totalW = math.max(totalW, child.x + child.width - concrete.x)
+		totalH = math.max(totalH, child.y + child.height - concrete.y)
+	end
+
+	concrete.width = totalW
+	concrete.height = totalH
+end
+
+local function sizedBox(w, h, ...)
+	return Box:new()
+		:addConstraints(...)
+		:addConstraints(
+			sizeConstraint(w, h),
+			VerticalLayout
+		)
+end
+
+local layout = sizedBox(300, 300,
+		Children(
+			sizedBox(200, 200,
+				Children(
+					sizedBox(100, 50),
+					sizedBox(50, 50),
+					sizedBox(100, 50)
+				)
+			)
+			:addConstraints(
+				fitContents
+			)
+		)
+	)
+
+local concrete = layout:congeal()
+
+local function render(concrete)
+	love.graphics.rectangle("line", concrete.x, concrete.y, concrete.width, concrete.height)
+
+	for _, child in ipairs(concrete.children) do
+		render(child)
 	end
 end
 
 function love.draw()
-	love.graphics.push()
 	love.graphics.translate(50, 50)
-
-	renderBox(layout)
-
-	love.graphics.pop()
+	render(concrete)
 end
 
 function love.update(dt)
-	t = t + dt
-
-	layout.width = 300 + 100 * math.cos(t * 2)
-	layout.height = 300 + 100 * math.sin(t * 2)
 end
 
 function love.keypressed(key)

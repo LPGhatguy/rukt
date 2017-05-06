@@ -1,17 +1,11 @@
-local root = (...):match("^(.-)%..-$")
-local NullLayout = require(root .. ".NullLayout")
-
 local Box = {}
 
 Box.__index = Box
 
-function Box:new(width, height)
+function Box:new()
 	local new = {
-		width = width,
-		height = height,
 		children = {},
-		currentLayout = NullLayout,
-		parent = nil
+		constraints = {}
 	}
 
 	setmetatable(new, self)
@@ -19,48 +13,43 @@ function Box:new(width, height)
 	return new
 end
 
-function Box:layout(layout)
-	self.currentLayout = layout
-
-	return self
-end
-
-function Box:add(...)
+function Box:addConstraints(...)
 	for i = 1, select("#", ...) do
 		local item = select(i, ...)
-		table.insert(self.children, item)
-		item.parent = self
+		table.insert(self.constraints, item)
 	end
 
 	return self
 end
 
-function Box:getRelativePosition()
-	if not self.parent then
-		return 0, 0
-	end
+function Box:createConcreteNode()
+	local concreteNode = {}
 
-	return self.parent.currentLayout:getBoxPosition(self.parent, self)
+	concreteNode.abstractNode = self
+	concreteNode.children = {}
+	concreteNode.width = 0
+	concreteNode.height = 0
+	concreteNode.x = 0
+	concreteNode.y = 0
+
+	return concreteNode
 end
 
-function Box:getAbsolutePosition()
-	local x, y = self:getRelativePosition()
+function Box:congeal(concreteNode, context)
+	context = context or {
+		stack = {}
+	}
+	concreteNode = concreteNode or self:createConcreteNode()
 
-	-- Crawl up descendants and sum their positions
-	local ancestor = self.parent
-	while ancestor do
-		local ox, oy = ancestor:getAbsolutePosition()
-		x = x + ox
-		y = y + oy
+	table.insert(context.stack, concreteNode)
 
-		ancestor = ancestor.parent
+	for _, constraint in ipairs(self.constraints) do
+		constraint(self, concreteNode, context)
 	end
 
-	return x, y
-end
+	table.remove(context.stack, #context.stack)
 
-function Box:getAbsoluteSize()
-	return self.width, self.height
+	return concreteNode
 end
 
 return Box
