@@ -1,5 +1,4 @@
 local Rukt = require("rukt")
-local Node = Rukt.Node
 
 local t = 0
 
@@ -11,21 +10,6 @@ local function BoxPredicate(x, y, w, h)
 		concrete.y = y
 		concrete.w = w
 		concrete.h = h
-
-		return concrete
-	end
-end
-
-local function Children(children)
-	return function(abstract, concrete)
-		concrete.children = {}
-
-		for _, child in ipairs(children) do
-			local items = {child:congeal()}
-			for _, item in ipairs(items) do
-				table.insert(concrete.children, item)
-			end
-		end
 
 		return concrete
 	end
@@ -68,16 +52,16 @@ local function BunchOfBoxesPredicate(abstract)
 end
 
 local function Box(x, y, w, h)
-	return Node:new():predicate(BoxPredicate(x, y, w, h))
+	return Rukt.Node:new():predicate(BoxPredicate(x, y, w, h))
 end
 
 local function BunchOfBoxes()
-	return Node:new():predicate(BunchOfBoxesPredicate)
+	return Rukt.Node:new():predicate(BunchOfBoxesPredicate)
 end
 
 local layout = Box(100, 100, 400, 300)
 	:predicate(
-		Children({
+		Rukt.ChildrenPredicate({
 			BunchOfBoxes()
 		}),
 		OffsetChildren,
@@ -102,7 +86,7 @@ end
 
 function love.update(dt)
 	t = t + dt
-	concrete = layout:congeal(concrete)
+	concrete = layout:congeal()
 end
 
 function love.keypressed(key)

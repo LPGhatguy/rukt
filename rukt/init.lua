@@ -1,7 +1,8 @@
 local root = (...) .. "."
 
 local modules = {
-	"Node"
+	"Node",
+	"ChildrenPredicate"
 }
 
 local Rukt = {}
