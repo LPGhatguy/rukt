@@ -1,100 +1,92 @@
 local Rukt = require("rukt")
-local Box = Rukt.Box
+local Node = Rukt.Node
 
-local function Children(...)
-	local children = {...}
+-- Higher-order constraint to copy specific properties 1:1
+local function copyPropertiesConstraint(props)
 	return function(abstract, concrete)
-		for _, child in ipairs(children) do
-			table.insert(abstract.children, child)
+		for _, propName in ipairs(props) do
+			concrete[propName] = abstract[propName]
 		end
 	end
 end
 
-local function Color(r, g, b)
-	return function(abstract, concrete)
-		concrete.color = {r, g, b}
+-- Higher-order constraint to add children to a node
+local function childrenConstraint(children)
+	return function(abstract, concrete, context)
+		concrete.children = concrete.children or {}
+
+		for _, child in ipairs(children) do
+			local concreteChild = child:congeal(nil, context)
+			table.insert(concrete.children, concreteChild)
+		end
 	end
 end
 
-local function VerticalLayout(abstract, concrete)
-	local y = concrete.y
-
-	for _, childNode in ipairs(abstract.children) do
-		local concreteChild = childNode:createConcreteNode()
-		concreteChild.y = y
-
-		childNode:congeal(concreteChild)
-
-		y = y + concreteChild.height
-
-		table.insert(concrete.children, concreteChild)
-	end
-end
-
-local function sizeConstraint(w, h)
-	return function(abstract, concrete)
-		concrete.width = w
-		concrete.height = h
-	end
-end
-
-local function fitContents(abstract, concrete)
-	local totalW, totalH = 0, 0
-
+local function horizontalCenterConstraint(abstract, concrete)
 	for _, child in ipairs(concrete.children) do
-		totalW = math.max(totalW, child.x + child.width - concrete.x)
-		totalH = math.max(totalH, child.y + child.height - concrete.y)
+		child.x = concrete.x + concrete.w / 2 - child.w / 2
 	end
-
-	concrete.width = totalW
-	concrete.height = totalH
 end
 
-local function sizedBox(w, h, ...)
-	return Box:new()
-		:addConstraints(...)
-		:addConstraints(
-			sizeConstraint(w, h),
-			VerticalLayout
-		)
+-- Constraint that vertically lays out box children
+-- Depends on children with a 'y' property and an 'h' property
+local function verticalLayoutConstraint(abstract, concrete)
+	local y = concrete.y
+	for _, child in ipairs(concrete.children) do
+		child.y = y
+		y = y + child.h
+	end
 end
 
-local layout = sizedBox(300, 300,
-		Children(
-			sizedBox(200, 200,
-				Children(
-					sizedBox(100, 50),
-					sizedBox(50, 50, Color(255, 0, 0)),
-					sizedBox(100, 50)
-				)
-			)
-			:addConstraints(
-				fitContents
-			)
-		)
+local positionSizeConstraint = copyPropertiesConstraint({"x", "y", "w", "h"})
+
+local function Box(x, y, w, h)
+	local node = Node:new()
+	node.x = x
+	node.y = y
+	node.w = w
+	node.h = h
+	node:constrain(positionSizeConstraint)
+
+	return node
+end
+
+local layout = Box(50, 50, 100, 100)
+	:constrain(
+		childrenConstraint({
+			Box(0, 0, 50, 50),
+			Box(0, 0, 50, 50)
+		}),
+		offsetChildrenConstraint,
+		horizontalCenterConstraint,
+		verticalLayoutConstraint
 	)
 
 local concrete = layout:congeal()
 
 local function render(concrete)
-	if concrete.color then
-		love.graphics.setColor(concrete.color)
-	else
-		love.graphics.setColor(255, 255, 255)
-	end
-	love.graphics.rectangle("line", concrete.x, concrete.y, concrete.width, concrete.height)
+	love.graphics.rectangle("line", concrete.x, concrete.y, concrete.w, concrete.h)
 
-	for _, child in ipairs(concrete.children) do
-		render(child)
+	if concrete.children then
+		for _, child in ipairs(concrete.children) do
+			render(child)
+		end
 	end
 end
 
 function love.draw()
-	love.graphics.translate(50, 50)
 	render(concrete)
 end
 
 function love.update(dt)
+end
+
+function love.mousepressed(x, y, button)
+	if button == 1 then
+		layout.w = x - 50
+		layout.h = y - 50
+		concrete = layout:congeal()
+	end
 end
 
 function love.keypressed(key)

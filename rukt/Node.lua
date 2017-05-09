@@ -1,10 +1,9 @@
-local Box = {}
+local Node = {}
 
-Box.__index = Box
+Node.__index = Node
 
-function Box:new()
+function Node:new()
 	local new = {
-		children = {},
 		constraints = {}
 	}
 
@@ -13,7 +12,7 @@ function Box:new()
 	return new
 end
 
-function Box:addConstraints(...)
+function Node:constrain(...)
 	for i = 1, select("#", ...) do
 		local item = select(i, ...)
 		table.insert(self.constraints, item)
@@ -22,24 +21,13 @@ function Box:addConstraints(...)
 	return self
 end
 
-function Box:createConcreteNode()
-	local concreteNode = {}
-
-	concreteNode.abstractNode = self
-	concreteNode.children = {}
-	concreteNode.width = 0
-	concreteNode.height = 0
-	concreteNode.x = 0
-	concreteNode.y = 0
-
-	return concreteNode
-end
-
-function Box:congeal(concreteNode, context)
+function Node:congeal(concreteNode, context)
 	context = context or {
 		stack = {}
 	}
-	concreteNode = concreteNode or self:createConcreteNode()
+	concreteNode = concreteNode or {
+		abstractNode = self
+	}
 
 	table.insert(context.stack, concreteNode)
 
@@ -52,4 +40,4 @@ function Box:congeal(concreteNode, context)
 	return concreteNode
 end
 
-return Box
+return Node
