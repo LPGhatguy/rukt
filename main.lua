@@ -1,71 +1,93 @@
 local Rukt = require("rukt")
 local Node = Rukt.Node
 
--- Higher-order constraint to copy specific properties 1:1
-local function copyPropertiesConstraint(props)
+local t = 0
+
+local function BoxPredicate(x, y, w, h)
 	return function(abstract, concrete)
-		for _, propName in ipairs(props) do
-			concrete[propName] = abstract[propName]
-		end
+		concrete = concrete or {}
+
+		concrete.x = x
+		concrete.y = y
+		concrete.w = w
+		concrete.h = h
+
+		return concrete
 	end
 end
 
--- Higher-order constraint to add children to a node
-local function childrenConstraint(children)
-	return function(abstract, concrete, context)
-		concrete.children = concrete.children or {}
+local function Children(children)
+	return function(abstract, concrete)
+		concrete.children = {}
 
 		for _, child in ipairs(children) do
-			local concreteChild = child:congeal(nil, context)
-			table.insert(concrete.children, concreteChild)
+			local items = {child:congeal()}
+			for _, item in ipairs(items) do
+				table.insert(concrete.children, item)
+			end
 		end
+
+		return concrete
 	end
 end
 
-local function horizontalCenterConstraint(abstract, concrete)
+local function DrawMode(mode)
+	return function(abstract, concrete)
+		concrete.mode = mode
+		return concrete
+	end
+end
+
+local function OffsetChildren(abstract, concrete)
 	for _, child in ipairs(concrete.children) do
-		child.x = concrete.x + concrete.w / 2 - child.w / 2
+		child.x = child.x + concrete.x
+		child.y = child.y + concrete.y
 	end
+
+	return concrete
 end
 
--- Constraint that vertically lays out box children
--- Depends on children with a 'y' property and an 'h' property
-local function verticalLayoutConstraint(abstract, concrete)
-	local y = concrete.y
-	for _, child in ipairs(concrete.children) do
-		child.y = y
-		y = y + child.h
+local function WavyChildren(abstract, concrete)
+	for key, child in ipairs(concrete.children) do
+		child.y = child.y + 100 * math.sin(3 * t + 0.5 * key)
 	end
+
+	return concrete
 end
 
-local positionSizeConstraint = copyPropertiesConstraint({"x", "y", "w", "h"})
+local function BunchOfBoxesPredicate(abstract)
+	local results = {}
+
+	for i = 0, 7 do
+		local object = BoxPredicate(50 * i, 100, 50, 50)(abstract)
+		object = DrawMode("fill")(abstract, object)
+		table.insert(results, object)
+	end
+
+	return unpack(results)
+end
 
 local function Box(x, y, w, h)
-	local node = Node:new()
-	node.x = x
-	node.y = y
-	node.w = w
-	node.h = h
-	node:constrain(positionSizeConstraint)
-
-	return node
+	return Node:new():predicate(BoxPredicate(x, y, w, h))
 end
 
-local layout = Box(50, 50, 100, 100)
-	:constrain(
-		childrenConstraint({
-			Box(0, 0, 50, 50),
-			Box(0, 0, 50, 50)
+local function BunchOfBoxes()
+	return Node:new():predicate(BunchOfBoxesPredicate)
+end
+
+local layout = Box(100, 100, 400, 300)
+	:predicate(
+		Children({
+			BunchOfBoxes()
 		}),
-		offsetChildrenConstraint,
-		horizontalCenterConstraint,
-		verticalLayoutConstraint
+		OffsetChildren,
+		WavyChildren
 	)
 
 local concrete = layout:congeal()
 
 local function render(concrete)
-	love.graphics.rectangle("line", concrete.x, concrete.y, concrete.w, concrete.h)
+	love.graphics.rectangle(concrete.mode or "line", concrete.x, concrete.y, concrete.w, concrete.h)
 
 	if concrete.children then
 		for _, child in ipairs(concrete.children) do
@@ -79,14 +101,8 @@ function love.draw()
 end
 
 function love.update(dt)
-end
-
-function love.mousepressed(x, y, button)
-	if button == 1 then
-		layout.w = x - 50
-		layout.h = y - 50
-		concrete = layout:congeal()
-	end
+	t = t + dt
+	concrete = layout:congeal(concrete)
 end
 
 function love.keypressed(key)

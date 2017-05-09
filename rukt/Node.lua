@@ -4,7 +4,7 @@ Node.__index = Node
 
 function Node:new()
 	local new = {
-		constraints = {}
+		_predicates = {}
 	}
 
 	setmetatable(new, self)
@@ -12,32 +12,27 @@ function Node:new()
 	return new
 end
 
-function Node:constrain(...)
+function Node:predicate(...)
 	for i = 1, select("#", ...) do
 		local item = select(i, ...)
-		table.insert(self.constraints, item)
+		table.insert(self._predicates, item)
 	end
 
 	return self
 end
 
-function Node:congeal(concreteNode, context)
-	context = context or {
-		stack = {}
-	}
-	concreteNode = concreteNode or {
-		abstractNode = self
-	}
+function Node:_congealInternal(i, ...)
+	local constraint = self._predicates[i]
 
-	table.insert(context.stack, concreteNode)
-
-	for _, constraint in ipairs(self.constraints) do
-		constraint(self, concreteNode, context)
+	if not constraint then
+		return ...
 	end
 
-	table.remove(context.stack, #context.stack)
+	return self:_congealInternal(i + 1, constraint(self, ...))
+end
 
-	return concreteNode
+function Node:congeal(...)
+	return self:_congealInternal(1, ...)
 end
 
 return Node
