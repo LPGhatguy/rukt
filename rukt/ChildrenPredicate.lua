@@ -4,17 +4,17 @@
 ]]
 
 local function ChildrenPredicate(children)
-	return function(abstract, concrete)
+	return function(concrete, ...)
 		concrete.children = {}
 
 		for _, child in ipairs(children) do
-			local items = {child:congeal()}
+			local items = {child()}
 			for _, item in ipairs(items) do
 				table.insert(concrete.children, item)
 			end
 		end
 
-		return concrete
+		return concrete, ...
 	end
 end
 

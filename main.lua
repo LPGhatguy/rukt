@@ -1,9 +1,21 @@
 local Rukt = require("rukt")
 
-local t = 0
+local state = {
+	time = 0
+}
+
+local function Text(text)
+	return function(concrete, ...)
+		concrete = concrete or {}
+
+		concrete.text = text
+
+		return concrete, ...
+	end
+end
 
 local function BoxPredicate(x, y, w, h)
-	return function(abstract, concrete)
+	return function(concrete, ...)
 		concrete = concrete or {}
 
 		concrete.x = x
@@ -11,67 +23,74 @@ local function BoxPredicate(x, y, w, h)
 		concrete.w = w
 		concrete.h = h
 
-		return concrete
+		return concrete, ...
 	end
 end
 
 local function DrawMode(mode)
-	return function(abstract, concrete)
+	return function(concrete, ...)
 		concrete.mode = mode
-		return concrete
+		return concrete, ...
 	end
 end
 
-local function OffsetChildren(abstract, concrete)
+local function HorizonalLayout(concrete, ...)
+	local x = concrete.x
 	for _, child in ipairs(concrete.children) do
-		child.x = child.x + concrete.x
+		child.x = x
 		child.y = child.y + concrete.y
+		x = x + child.w
 	end
 
-	return concrete
+	return concrete, ...
 end
 
-local function WavyChildren(abstract, concrete)
+local function WavyChildren(concrete, state, ...)
 	for key, child in ipairs(concrete.children) do
-		child.y = child.y + 100 * math.sin(3 * t + 0.5 * key)
+		child.y = child.y + 100 * math.sin(3 * state.time + 0.5 * key)
 	end
 
-	return concrete
+	return concrete, state, ...
 end
 
-local function BunchOfBoxesPredicate(abstract)
+local function BunchOfBoxesPredicate(...)
 	local results = {}
 
 	for i = 0, 7 do
-		local object = BoxPredicate(50 * i, 100, 50, 50)(abstract)
-		object = DrawMode("fill")(abstract, object)
+		local object = Rukt.Compose({
+			BoxPredicate(0, 100, 50, 50),
+			Text("Hello " .. i),
+			DrawMode("fill")
+		})()
 		table.insert(results, object)
+	end
+
+	for i = 1, select("#", ...) do
+		table.insert(results, (select(i, ...)))
 	end
 
 	return unpack(results)
 end
 
-local function Box(x, y, w, h)
-	return Rukt.Node:new():predicate(BoxPredicate(x, y, w, h))
-end
+local layout = Rukt.Compose({
+	BoxPredicate(50, 50, 400, 250),
+	Rukt.ChildrenPredicate({
+		BunchOfBoxesPredicate
+	}),
+	HorizonalLayout,
+	WavyChildren
+})
 
-local function BunchOfBoxes()
-	return Rukt.Node:new():predicate(BunchOfBoxesPredicate)
-end
-
-local layout = Box(100, 100, 400, 300)
-	:predicate(
-		Rukt.ChildrenPredicate({
-			BunchOfBoxes()
-		}),
-		OffsetChildren,
-		WavyChildren
-	)
-
-local concrete = layout:congeal()
+local concrete = layout(nil, state)
 
 local function render(concrete)
+	love.graphics.setColor(255, 255, 255)
 	love.graphics.rectangle(concrete.mode or "line", concrete.x, concrete.y, concrete.w, concrete.h)
+
+	if concrete.text then
+		love.graphics.setColor(255, 0, 0)
+		love.graphics.print(concrete.text, concrete.x, concrete.y)
+	end
 
 	if concrete.children then
 		for _, child in ipairs(concrete.children) do
@@ -85,8 +104,8 @@ function love.draw()
 end
 
 function love.update(dt)
-	t = t + dt
-	concrete = layout:congeal()
+	state.time = state.time + dt
+	concrete = layout(nil, state)
 end
 
 function love.keypressed(key)
