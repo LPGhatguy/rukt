@@ -4,6 +4,10 @@ local state = {
 	time = 0
 }
 
+local function Reverse(a, b)
+	return b, a
+end
+
 local function Text(text)
 	return function(concrete, ...)
 		concrete = concrete or {}
@@ -73,6 +77,7 @@ local function BunchOfBoxesPredicate(...)
 end
 
 local layout = Rukt.Compose({
+	Reverse,
 	BoxPredicate(50, 50, 400, 250),
 	Rukt.ChildrenPredicate({
 		BunchOfBoxesPredicate
@@ -81,7 +86,7 @@ local layout = Rukt.Compose({
 	WavyChildren
 })
 
-local concrete = layout(nil, state)
+local concrete = layout(state)
 
 local function render(concrete)
 	love.graphics.setColor(255, 255, 255)
@@ -105,7 +110,7 @@ end
 
 function love.update(dt)
 	state.time = state.time + dt
-	concrete = layout(nil, state)
+	concrete = layout(state)
 end
 
 function love.keypressed(key)
