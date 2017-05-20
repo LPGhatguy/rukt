@@ -105,7 +105,7 @@ end
 
 function love.update(dt)
 	state.time = state.time + dt
-	concrete = layout(state)
+	concrete = layout()
 end
 
 function love.keypressed(key)
