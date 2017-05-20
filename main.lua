@@ -4,10 +4,6 @@ local state = {
 	time = 0
 }
 
-local function Reverse(a, b)
-	return b, a
-end
-
 local function Text(text)
 	return function(concrete, ...)
 		concrete = concrete or {}
@@ -49,12 +45,14 @@ local function HorizonalLayout(concrete, ...)
 	return concrete, ...
 end
 
-local function WavyChildren(concrete, state, ...)
-	for key, child in ipairs(concrete.children) do
-		child.y = child.y + 100 * math.sin(3 * state.time + 0.5 * key)
-	end
+local function WavyChildren(state)
+	return function(concrete, ...)
+		for key, child in ipairs(concrete.children) do
+			child.y = child.y + 100 * math.sin(3 * state().time + 0.5 * key)
+		end
 
-	return concrete, state, ...
+		return concrete, ...
+	end
 end
 
 local function BunchOfBoxesPredicate(...)
@@ -73,16 +71,17 @@ local function BunchOfBoxesPredicate(...)
 end
 
 local layout = Rukt.Compose({
-	Reverse,
 	BoxPredicate(50, 50, 400, 250),
 	Rukt.ChildrenPredicate({
 		BunchOfBoxesPredicate
 	}),
 	HorizonalLayout,
-	WavyChildren
+	WavyChildren(function()
+		return state
+	end)
 })
 
-local concrete = layout(state)
+local concrete = layout()
 
 local function render(concrete)
 	love.graphics.setColor(255, 255, 255)
