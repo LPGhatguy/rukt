@@ -8,7 +8,7 @@ local function ChildrenPredicate(children)
 		concrete.children = {}
 
 		for _, child in ipairs(children) do
-			local items = {child()}
+			local items = {child(...)}
 			for _, item in ipairs(items) do
 				table.insert(concrete.children, item)
 			end

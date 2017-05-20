@@ -69,10 +69,6 @@ local function BunchOfBoxesPredicate(...)
 		table.insert(results, object)
 	end
 
-	for i = 1, select("#", ...) do
-		table.insert(results, (select(i, ...)))
-	end
-
 	return unpack(results)
 end
 
