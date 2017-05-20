@@ -67,7 +67,7 @@ local function WavyChildren(state)
 	end
 end
 
-local function BunchOfBoxesPredicate()
+local function BunchOfBoxes()
 	local results = {}
 
 	for i = 0, 7 do
@@ -84,8 +84,8 @@ end
 
 local layout = Rukt.Compose({
 	Box(50, 50, 400, 250),
-	Rukt.ChildrenPredicate({
-		BunchOfBoxesPredicate
+	Rukt.Children({
+		BunchOfBoxes
 	}),
 	HorizonalLayout,
 	WavyChildren(function()

@@ -3,7 +3,7 @@
 	nodes to a single concrete node.
 ]]
 
-local function ChildrenPredicate(children)
+local function Children(children)
 	return function(concrete)
 		concrete.children = {}
 
@@ -18,4 +18,4 @@ local function ChildrenPredicate(children)
 	end
 end
 
-return ChildrenPredicate
+return Children

@@ -1,7 +1,7 @@
 local root = (...) .. "."
 
 local modules = {
-	"ChildrenPredicate",
+	"Children",
 	"Compose"
 }
 
