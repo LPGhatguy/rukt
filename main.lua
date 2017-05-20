@@ -5,17 +5,17 @@ local state = {
 }
 
 local function Text(text)
-	return function(concrete, ...)
+	return function(concrete)
 		concrete = concrete or {}
 
 		concrete.text = text
 
-		return concrete, ...
+		return concrete
 	end
 end
 
-local function BoxPredicate(x, y, w, h)
-	return function(concrete, ...)
+local function Box(x, y, w, h)
+	return function(concrete)
 		concrete = concrete or {}
 
 		concrete.x = x
@@ -23,18 +23,30 @@ local function BoxPredicate(x, y, w, h)
 		concrete.w = w
 		concrete.h = h
 
-		return concrete, ...
+		return concrete
+	end
+end
+
+local function Circle(x, y, r)
+	return function(concrete)
+		concrete = concrete or {}
+
+		concrete.x = x
+		concrete.y = y
+		concrete.r = r
+
+		return concrete
 	end
 end
 
 local function DrawMode(mode)
-	return function(concrete, ...)
+	return function(concrete)
 		concrete.mode = mode
-		return concrete, ...
+		return concrete
 	end
 end
 
-local function HorizonalLayout(concrete, ...)
+local function HorizonalLayout(concrete)
 	local x = concrete.x
 	for _, child in ipairs(concrete.children) do
 		child.x = x
@@ -42,25 +54,25 @@ local function HorizonalLayout(concrete, ...)
 		x = x + child.w
 	end
 
-	return concrete, ...
+	return concrete
 end
 
 local function WavyChildren(state)
-	return function(concrete, ...)
+	return function(concrete)
 		for key, child in ipairs(concrete.children) do
 			child.y = child.y + 100 * math.sin(3 * state().time + 0.5 * key)
 		end
 
-		return concrete, ...
+		return concrete
 	end
 end
 
-local function BunchOfBoxesPredicate(...)
+local function BunchOfBoxesPredicate()
 	local results = {}
 
 	for i = 0, 7 do
 		local object = Rukt.Compose({
-			BoxPredicate(0, 100, 50, 50),
+			Box(0, 100, 50, 50),
 			Text("Hello " .. i),
 			DrawMode("fill")
 		})()
@@ -71,7 +83,7 @@ local function BunchOfBoxesPredicate(...)
 end
 
 local layout = Rukt.Compose({
-	BoxPredicate(50, 50, 400, 250),
+	Box(50, 50, 400, 250),
 	Rukt.ChildrenPredicate({
 		BunchOfBoxesPredicate
 	}),
